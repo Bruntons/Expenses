@@ -324,6 +324,10 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
 .shot { display: block; max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; }
 #shot-preview { max-height: 200px; width: auto; margin-top: 6px; }
 .photo-view { padding: 0 2px 10px calc(2.2ch + 10px); font-family: var(--body); color: var(--muted); font-size: .875rem; }
+.cam { position: fixed; inset: 0; z-index: 10; background: #000; display: flex; flex-direction: column; }
+.cam video { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+.cam-bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); background: var(--navy); }
+.cam-bar .ghost { color: var(--ink); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -385,8 +389,8 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     <div class="field">
       <span class="field-label">Receipt photo</span>
       <div class="shot-row">
-        <input class="sr" id="shot-cam" type="file" accept="image/*" capture="environment">
-        <label class="ghost shot-btn" for="shot-cam" id="shot-label">Take photo</label>
+        <button class="ghost shot-btn" id="shot-label" type="button">Take photo</button>
+        <input class="sr" id="shot-cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
         <input class="sr" id="shot" type="file" accept="image/*">
         <label class="ghost shot-btn" for="shot">Choose from library</label>
         <button class="link" id="shot-remove" type="button" hidden>Remove photo</button>
@@ -425,6 +429,14 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     <ul class="bars" id="who-bars" hidden></ul>
   </section>
 </main>
+
+<div class="cam" id="cam" role="dialog" aria-modal="true" aria-label="Take a photo of the receipt" hidden>
+  <video id="cam-video" playsinline autoplay muted></video>
+  <div class="cam-bar">
+    <button class="ghost" id="cam-cancel" type="button">Cancel</button>
+    <button class="primary" id="cam-snap" type="button">Take photo</button>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" hidden>
   <span id="toast-msg"></span>
@@ -880,6 +892,48 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
       img.src = url;
     });
   }
+  // The app's own camera screen, used when the page is installed or opened by its link.
+  // Inside Claude the camera isn't available to pages, so the phone's picker is used there.
+  var camStream = null;
+  function camClose() {
+    if (camStream) camStream.getTracks().forEach(function (t) { t.stop(); });
+    camStream = null;
+    $('cam-video').srcObject = null;
+    $('cam').hidden = true;
+  }
+  function camOpen() {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
+    }).then(function (st) {
+      var v = $('cam-video');
+      camStream = st; v.srcObject = st;
+      $('cam').hidden = false;
+      var pl = v.play(); if (pl && pl.catch) pl.catch(function () {});
+      $('cam-snap').focus();
+    }, function (e) {
+      var blocked = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      toast(blocked
+        ? 'The camera is blocked for this app. Allow camera access in the browser’s site settings, then try again.'
+        : 'No camera could be opened. Use Choose from library instead.');
+      if (!blocked) { try { $('shot-cam').click(); } catch (x) { /* the picker needs a fresh tap */ } }
+    });
+  }
+  function camSnap() {
+    var v = $('cam-video');
+    if (!v.videoWidth) return;
+    var c = document.createElement('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    camClose();
+    c.toBlob(function (b) {
+      if (!b) { toast('That photo couldn’t be read. Try taking it again.'); return; }
+      shrink(b).then(function (rec) { setShot('new', rec); }, function () { toast('That photo couldn’t be read. Try taking it again.'); });
+    }, 'image/jpeg', 0.92);
+  }
+  function takePhoto() {
+    if (S.native && window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) camOpen();
+    else $('shot-cam').click();
+  }
   function showShot(rec) {
     var im = $('shot-preview');
     if (rec) { im.src = rec.data; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
@@ -1206,6 +1260,10 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     };
     $('shot').addEventListener('change', onShot);
     $('shot-cam').addEventListener('change', onShot);
+    $('shot-label').addEventListener('click', takePhoto);
+    $('cam-snap').addEventListener('click', camSnap);
+    $('cam-cancel').addEventListener('click', camClose);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('cam').hidden) camClose(); });
     $('shot-remove').addEventListener('click', function () { setShot('none'); });
     $('chips').addEventListener('change', function () { S.catManual = true; $('cat-hint').hidden = true; });
     S.names = cleanNames(ls.get('ledger.names', [])).sort(byName);
