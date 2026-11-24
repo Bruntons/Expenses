@@ -320,7 +320,7 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
 .field-label { font-size: .875rem; font-weight: 500; }
 .shot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .shot-btn { display: inline-block; cursor: pointer; }
-#shot:focus-visible + .shot-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shot-row input:focus-visible + .shot-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
 .shot { display: block; max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; }
 #shot-preview { max-height: 200px; width: auto; margin-top: 6px; }
 .photo-view { padding: 0 2px 10px calc(2.2ch + 10px); font-family: var(--body); color: var(--muted); font-size: .875rem; }
@@ -385,8 +385,10 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     <div class="field">
       <span class="field-label">Receipt photo</span>
       <div class="shot-row">
+        <input class="sr" id="shot-cam" type="file" accept="image/*" capture="environment">
+        <label class="ghost shot-btn" for="shot-cam" id="shot-label">Take photo</label>
         <input class="sr" id="shot" type="file" accept="image/*">
-        <label class="ghost shot-btn" for="shot" id="shot-label">Add receipt photo</label>
+        <label class="ghost shot-btn" for="shot">Choose from library</label>
         <button class="link" id="shot-remove" type="button" hidden>Remove photo</button>
       </div>
       <img class="shot" id="shot-preview" alt="Receipt photo for this expense" hidden>
@@ -882,7 +884,7 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     var im = $('shot-preview');
     if (rec) { im.src = rec.data; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
     $('shot-remove').hidden = F.photo === 'none';
-    $('shot-label').textContent = F.photo === 'none' ? 'Add receipt photo' : 'Replace photo';
+    $('shot-label').textContent = F.photo === 'none' ? 'Take photo' : 'Retake photo';
   }
   function setShot(state, rec) { F.photo = state; F.rec = rec || null; showShot(rec); }
   function photoView(x) {
@@ -1057,7 +1059,7 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     });
   }
   // The month in view as an A4 PDF: header band, entries table, a total per currency.
-  function buildPdf(JsPDF, items, monthName, logo, photos) {
+  function buildPdf(JsPDF, items, monthName, logo, photos, who) {
     var doc = new JsPDF({ unit: 'mm', format: 'a4' });
     // The built-in PDF fonts cover Western European characters only.
     var safe = function (t) {
@@ -1065,7 +1067,7 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
         .replace(/[–—]/g, '-').replace(/…/g, '...').replace(/[^\x20-\xff]/g, '?');
     };
     var num = function (minor) { return (minor / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    var L = 14, R = 196, X = { date: L + 2, who: 38, note: 74, cat: 138, amt: R - 2 }, y;
+    var L = 14, R = 196, X = { date: L + 2, note: 38, cat: 134, amt: R - 2 }, y;
 
     doc.setFillColor(10, 42, 92); doc.rect(0, 0, 210, 26, 'F');
     doc.setFillColor(226, 169, 37); doc.rect(0, 26, 210, 1.2, 'F');
@@ -1073,18 +1075,24 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     try { if (logo && logo.complete && logo.naturalWidth) { doc.addImage(logo, 'PNG', L, 7, 53.5, 12); tx = 74; } } catch (e) { tx = L; }
     doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
     doc.text('EXPENSE LEDGER', tx, 15);
+    // Whose expenses these are, and the date of the export, in the header band.
+    var p = today().split('-'), shownName = safe(who || 'not selected');
+    if (shownName.length > 30) shownName = shownName.slice(0, 29) + '.';
+    doc.setFontSize(10);
+    doc.text('Name: ' + shownName, R, 12.5, { align: 'right' });
+    doc.text('Date: ' + p[2] + '/' + p[1] + '/' + p[0], R, 18.5, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
 
     doc.setTextColor(20, 34, 74); doc.setFontSize(16);
     doc.text(safe(monthName), L, 40);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 102, 133);
-    var p = today().split('-');
-    doc.text(items.length + (items.length === 1 ? ' entry' : ' entries') + ', exported ' + p[2] + '/' + p[1] + '/' + p[0], L, 46);
+    doc.text(items.length + (items.length === 1 ? ' entry' : ' entries'), L, 46);
     y = 52;
 
     function head() {
       doc.setFillColor(10, 42, 92); doc.rect(L, y, R - L, 7, 'F');
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-      doc.text('DATE', X.date, y + 4.8); doc.text('NAME', X.who, y + 4.8); doc.text('DESCRIPTION', X.note, y + 4.8);
+      doc.text('DATE', X.date, y + 4.8); doc.text('DESCRIPTION', X.note, y + 4.8);
       doc.text('CATEGORY', X.cat, y + 4.8); doc.text('AMOUNT', X.amt, y + 4.8, { align: 'right' });
       y += 7;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(20, 34, 74);
@@ -1094,11 +1102,11 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     head();
     items.forEach(function (x) {
       var d = x.date.split('-');
-      var who = doc.splitTextToSize(safe(x.who), 34), note = doc.splitTextToSize(safe(x.note || CAT_NAME[x.cat]), 62);
-      var h = Math.max(who.length, note.length, 1) * 4.2 + 3.4;
+      var note = doc.splitTextToSize(safe(x.note || CAT_NAME[x.cat]), 92);
+      var h = Math.max(note.length, 1) * 4.2 + 3.4;
       room(h);
       doc.text(d[2] + '/' + d[1] + '/' + d[0], X.date, y + 4.8);
-      doc.text(who, X.who, y + 4.8); doc.text(note, X.note, y + 4.8);
+      doc.text(note, X.note, y + 4.8);
       doc.text(safe(CAT_NAME[x.cat]), X.cat, y + 4.8);
       doc.text(num(x.amount) + ' ' + x.cur, X.amt, y + 4.8, { align: 'right' });
       y += h;
@@ -1129,6 +1137,14 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     });
     return doc.output('arraybuffer');
   }
+  // The name for the export header: the one selected, else the one name the entries share.
+  function exportName(items) {
+    if (S.who) return S.who;
+    var seen = {};
+    items.forEach(function (x) { if (x.who) seen[x.who] = 1; });
+    var names = Object.keys(seen);
+    return names.length === 1 ? names[0] : '';
+  }
   function onPdf() {
     if (!canSave() || !window.jspdf) return;
     var name = 'expenses-' + S.view + '.pdf', items = shown().items.slice().reverse();
@@ -1138,7 +1154,7 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
       withPhoto.forEach(function (x, i) { if (recs[i]) photos[x.id] = recs[i]; });
       try {
         var monthName = parseISO(S.view + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-        buf = buildPdf(window.jspdf.jsPDF, items, monthName, document.querySelector('.logo'), photos);
+        buf = buildPdf(window.jspdf.jsPDF, items, monthName, document.querySelector('.logo'), photos, exportName(items));
       } catch (e) { toast('The PDF couldn’t be built. Use the CSV export instead.'); return; }
       return saveFile(name, buf, 'application/pdf').then(
         function (r) { if (!r || !r.quiet) toast('Saved ' + name + '.'); },
@@ -1182,12 +1198,14 @@ select.text { background: var(--paper); color: var(--ink); border: 1px solid var
     $('export').addEventListener('click', onExport);
     $('pdf').addEventListener('click', onPdf);
     $('note').addEventListener('input', autoCat);
-    $('shot').addEventListener('change', function () {
+    var onShot = function () {
       var f = this.files && this.files[0];
       this.value = '';
       if (!f) return;
       shrink(f).then(function (rec) { setShot('new', rec); }, function () { toast('That photo couldn’t be read. Try taking it again.'); });
-    });
+    };
+    $('shot').addEventListener('change', onShot);
+    $('shot-cam').addEventListener('change', onShot);
     $('shot-remove').addEventListener('click', function () { setShot('none'); });
     $('chips').addEventListener('change', function () { S.catManual = true; $('cat-hint').hidden = true; });
     S.names = cleanNames(ls.get('ledger.names', [])).sort(byName);
