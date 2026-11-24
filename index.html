@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bruntons Expenses</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a2a5c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Bruntons theme: navy bar with a gold rule, white working surface,
+   condensed uppercase headings, gold primary action.
+   Layout: left, the till where you key an expense in; right, the month as a receipt. */
+:root {
+  color-scheme: light;
+  --counter: #f2f4f9;
+  --paper: #ffffff;
+  --ink: #14224a;
+  --muted: #5a6685;
+  --rule: #d3d9e7;
+  --accent: #1c3a80;
+  --navy: #0a2a5c;
+  --bar-muted: #b6c2e0;
+  --gold: #e2a925;
+  --gold-ink: #14224a;
+  --till: #0a2a5c;
+  --till-fg: #ffffff;
+  --till-dim: #9fb0d8;
+  --danger: #c0271f;
+  --shadow: 0 1px 2px rgba(20, 34, 74, .08), 0 12px 28px -14px rgba(20, 34, 74, .3);
+  --display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--counter);
+  color: var(--ink);
+  font: 400 1rem/1.5 var(--body);
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px 20px 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 430px);
+  grid-template-areas: "form receipt" "split receipt";
+  grid-template-rows: auto 1fr;
+  gap: 24px 40px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "form" "receipt" "split";
+    grid-template-rows: none;
+    padding: 20px 16px 56px;
+  }
+}
+
+/* ---------- bar ---------- */
+.topbar { background: var(--navy); border-bottom: 3px solid var(--gold); color: #fff; }
+.bar-in { max-width: 1000px; margin: 0 auto; padding: 16px 20px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.brand { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; min-width: 0; }
+.logo { display: block; height: 52px; width: auto; max-width: 100%; border-radius: 8px; }
+.brand-text { border-left: 1px solid rgba(255, 255, 255, .22); padding-left: 18px; }
+.topbar :focus-visible { outline-color: var(--gold); }
+h1 {
+  margin: 0;
+  font: 700 1.35rem/1 var(--display);
+  letter-spacing: .1em;
+  color: var(--bar-muted);
+  text-transform: uppercase;
+}
+.status { margin: 4px 0 0; color: var(--bar-muted); font-size: .875rem; }
+.status.warn { color: #ffb9b0; }
+.currency { display: flex; align-items: center; gap: 8px; font-size: .875rem; font-weight: 500; color: var(--bar-muted); }
+select {
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: .875rem;
+}
+select option { color: #14224a; background: #fff; }
+
+/* ---------- till (entry form) ---------- */
+.till { grid-area: form; display: flex; flex-direction: column; gap: 18px; }
+.till h2, .split h2 {
+  margin: 0;
+  font: 600 .75rem/1 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lcd {
+  background: var(--till);
+  color: var(--till-fg);
+  border-radius: 12px;
+  padding: 14px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.lcd label { font: 500 .6875rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--till-dim); }
+.lcd-row { display: flex; align-items: baseline; gap: 10px; }
+.lcd-sym { font: 500 clamp(1.5rem, 5vw, 2rem)/1 var(--mono); color: var(--till-dim); }
+.lcd input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  color: var(--till-fg);
+  font: 500 clamp(2.4rem, 9vw, 3.4rem)/1.1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  caret-color: var(--till-fg);
+}
+.lcd input::placeholder { color: var(--till-dim); opacity: .55; }
+.lcd input:focus { outline: none; }
+.lcd:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.err { margin: -10px 0 0; color: var(--danger); font-size: .875rem; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > legend { font-size: .875rem; font-weight: 500; padding: 0; }
+fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
+.text {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+}
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 170px); gap: 14px; }
+@media (max-width: 440px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px 7px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: .875rem;
+  cursor: pointer;
+  user-select: none;
+}
+.chip b { font: 600 .6875rem/1 var(--mono); color: var(--muted); padding: 4px 5px; border-radius: 999px; background: var(--counter); }
+.chip input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip input:checked + span b { background: transparent; color: inherit; opacity: .7; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-weight: 600;
+}
+.primary:disabled { opacity: .6; cursor: default; }
+.link { background: none; border: 0; padding: 4px 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; font-size: .9375rem; }
+
+/* ---------- receipt ---------- */
+.receipt {
+  grid-area: receipt;
+  position: relative;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  padding: 22px 22px 18px;
+  font-family: var(--mono);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+.receipt::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  height: 8px;
+  background: conic-gradient(from 135deg at 50% 0, var(--paper) 90deg, transparent 0) 0 0 / 14px 8px repeat-x;
+}
+.month { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.month h2 { margin: 0; font: 600 .8125rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; text-align: center; }
+.step {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  width: 36px; height: 32px;
+  font: 500 1rem/1 var(--mono);
+}
+.total { margin: 18px 0 2px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.total span { font-weight: 600; letter-spacing: .12em; }
+.total strong { font: 800 clamp(2rem, 7vw, 2.6rem)/1 var(--display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.sub { margin: 0; color: var(--muted); font-size: .8125rem; }
+.stamp {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 4px 8px;
+  border: 1.5px dashed var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.roll { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px dashed var(--rule); }
+.day { padding: 12px 0 8px; border-bottom: 1px dashed var(--rule); }
+.day-head { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.items { list-style: none; margin: 0; padding: 0; }
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 5px 2px;
+  text-align: left;
+  font: inherit;
+}
+button.row:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.code { flex: none; color: var(--muted); font-size: .75rem; font-weight: 600; width: 2.2ch; }
+.note { min-width: 0; overflow-wrap: anywhere; }
+.dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--muted); opacity: .6; transform: translateY(-3px); }
+.amt { flex: none; font-weight: 500; }
+.row-actions { display: flex; gap: 18px; padding: 2px 2px 8px calc(2.2ch + 10px); }
+.row-actions .link { font-family: var(--body); font-size: .875rem; }
+.row-actions .del { color: var(--danger); }
+.empty { padding: 26px 0 18px; color: var(--muted); font-family: var(--body); font-size: .9375rem; border-bottom: 1px dashed var(--rule); }
+.receipt-foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .75rem; }
+.receipt-foot .link { font-family: var(--body); }
+
+/* ---------- breakdown ---------- */
+.split { grid-area: split; display: flex; flex-direction: column; gap: 12px; }
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: .9375rem; }
+.bar .amt { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .875rem; }
+.bar .amt small { color: var(--muted); font-size: .75rem; margin-left: 6px; }
+.track { grid-column: 1 / -1; height: 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); border-radius: 2px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s ease; }
+.split p { margin: 0; color: var(--muted); font-size: .9375rem; }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%; bottom: 20px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: .9375rem;
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+.toast button { background: none; border: 0; color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; }
+
+/* ---------- theme details ---------- */
+.till h2, .split h2 { font: 700 1.3rem/1 var(--display); letter-spacing: .05em; color: var(--ink); }
+.lcd { border-radius: 8px; }
+.primary { background: var(--gold); color: var(--gold-ink); border-radius: 6px; font-weight: 700; }
+.receipt { padding-top: 0; border: 1px solid var(--rule); border-bottom: 0; }
+.month { background: var(--navy); color: #fff; margin: 0 -23px; padding: 10px 14px; border-bottom: 3px solid var(--gold); }
+.month h2 { font: 700 1.1rem/1 var(--display); letter-spacing: .08em; color: #fff; }
+.step { border-color: rgba(255, 255, 255, .3); color: #fff; }
+.step:focus-visible { outline-color: var(--gold); }
+.total span { font: 700 1rem/1 var(--display); letter-spacing: .1em; }
+.total strong { font: 700 clamp(2.2rem, 7vw, 2.8rem)/1 var(--display); letter-spacing: 0; }
+.stamp { border-color: var(--gold); color: var(--ink); background: color-mix(in srgb, var(--gold) 18%, transparent); }
+.day-head { font: 600 .875rem/1.2 var(--display); letter-spacing: .08em; }
+.lcd select { flex: none; align-self: center; font-size: 1rem; padding: 8px; }
+.more { color: var(--ink); font-weight: 600; font-size: .9375rem; margin-bottom: 4px; }
+.cur-head { font: 600 .75rem/1 var(--mono); letter-spacing: .1em; color: var(--muted); margin-top: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+select.text { background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; font-family: var(--body); font-size: 1rem; }
+.who-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.who-row select { flex: 1; min-width: 180px; }
+.who-add { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.who-add input { flex: 1; min-width: 160px; }
+.ghost { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; font-weight: 600; }
+.note small { color: var(--muted); font-size: .75rem; }
+#who-title { margin-top: 12px; }
+.who-bar { display: flex; flex-direction: column; gap: 6px; min-width: min(280px, 100%); }
+.who-bar > label { font-size: .875rem; font-weight: 500; color: var(--bar-muted); }
+.topbar select { font-family: var(--body); font-size: 1rem; padding: 8px 10px; }
+.topbar .link { color: #fff; }
+.topbar .text, .topbar .ghost { color: var(--ink); }
+.receipt-foot .ghost { font-family: var(--body); font-size: .875rem; color: var(--ink); padding: 8px 12px; }
+.hint { margin: 6px 0 0; color: var(--muted); font-size: .8125rem; }
+.field-label { font-size: .875rem; font-weight: 500; }
+.shot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.shot-btn { display: inline-block; cursor: pointer; }
+#shot:focus-visible + .shot-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shot { display: block; max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; }
+#shot-preview { max-height: 200px; width: auto; margin-top: 6px; }
+.photo-view { padding: 0 2px 10px calc(2.2ch + 10px); font-family: var(--body); color: var(--muted); font-size: .875rem; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="bar-in">
+    <div class="brand">
+      <img class="logo" src="data:image/png;base64,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" width="232" height="52" alt="Bruntons">
+      <div class="brand-text">
+      <h1>Expense Ledger</h1>
+      <p class="status" id="status" role="status">Opening your ledger…</p>
+      </div>
+    </div>
+      <div class="who-bar">
+      <label for="who">Name</label>
+      <div class="who-row">
+        <select id="who"></select>
+        <button class="link" id="who-remove" type="button" hidden>Remove from list</button>
+      </div>
+      <div class="who-add" id="who-add" hidden>
+        <input class="text" id="who-new" type="text" maxlength="60" placeholder="Name to add" aria-label="Name to add">
+        <button class="ghost" id="who-save" type="button">Add name</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <form class="till" id="form" novalidate autocomplete="off">
+    <h2 id="form-title">Log an expense</h2>
+    <div class="lcd">
+      <label for="amount">Amount</label>
+      <div class="lcd-row">
+        <select id="cur" aria-label="Currency"></select>
+        <input id="amount" name="amount" type="text" inputmode="decimal" placeholder="0.00" aria-describedby="amount-err">
+      </div>
+    </div>
+    <p class="err" id="amount-err" role="alert" hidden></p>
+
+    <div class="pair">
+      <div class="field">
+        <label for="note">What was it for?</label>
+        <input class="text" id="note" name="note" type="text" maxlength="120" placeholder="Client lunch, train fare, parking">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input class="text" id="date" name="date" type="date" required>
+      </div>
+    </div>
+
+    <fieldset class="field">
+      <legend>Category</legend>
+      <div class="chips" id="chips"></div>
+      <p class="hint" id="cat-hint" hidden>Picked from the description. Choose another to change it.</p>
+    </fieldset>
+
+    <div class="field">
+      <span class="field-label">Receipt photo</span>
+      <div class="shot-row">
+        <input class="sr" id="shot" type="file" accept="image/*">
+        <label class="ghost shot-btn" for="shot" id="shot-label">Add receipt photo</label>
+        <button class="link" id="shot-remove" type="button" hidden>Remove photo</button>
+      </div>
+      <img class="shot" id="shot-preview" alt="Receipt photo for this expense" hidden>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="submit" type="submit">Log expense</button>
+      <button class="link" id="cancel" type="button" hidden>Cancel editing</button>
+    </div>
+  </form>
+
+  <section class="receipt" aria-labelledby="month-label">
+    <div class="month">
+      <button class="step" id="prev-month" type="button" aria-label="Previous month">&lt;</button>
+      <h2 id="month-label"></h2>
+      <button class="step" id="next-month" type="button" aria-label="Next month">&gt;</button>
+    </div>
+    <p class="total"><span>TOTAL</span> <strong id="total"></strong></p>
+    <p class="sub more" id="total-more" hidden></p>
+    <p class="sub" id="sub"></p>
+    <p class="stamp" id="stamp" hidden>Examples. Your first expense replaces them.</p>
+    <ol class="roll" id="roll"></ol>
+    <div class="receipt-foot">
+      <span id="foot-note">Select an entry to edit or remove it.</span>
+      <button class="ghost" id="pdf" type="button" hidden>Export to PDF</button>
+      <button class="link" id="export" type="button" hidden>Copy month as CSV</button>
+    </div>
+  </section>
+
+  <section class="split" aria-labelledby="split-title">
+    <h2 id="split-title">Where it went</h2>
+    <ul class="bars" id="bars"></ul>
+    <h2 id="who-title" hidden>By name</h2>
+    <ul class="bars" id="who-bars" hidden></ul>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden>
+  <span id="toast-msg"></span>
+  <button id="toast-act" type="button" hidden></button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var CATS = [
+    ['MI', 'Mileage'], ['FD', 'Food & Drink'], ['TR', 'Transport'], ['AC', 'Accommodation'], ['MS', 'Misc']
+  ];
+  var CAT_NAME = {};
+  CATS.forEach(function (c) { CAT_NAME[c[0]] = c[1]; });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var iso = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  var today = function () { return iso(new Date()); };
+  var parseISO = function (s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2] || 1); };
+  var shiftMonth = function (ym, by) {
+    var p = ym.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1 + by, 1);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  };
+
+  var ls = {
+    get: function (k, f) { try { var v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch (e) { return f; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage may be unavailable */ } }
+  };
+
+  var S = {
+    mode: 'boot',            // boot | cloud | local
+    view: today().slice(0, 7),
+    items: [],               // entries of the month in view
+    all: [],                 // local mode: every entry
+    loaded: false,
+    net: '',                 // '' | slow | error
+    editing: null,
+    openId: null,
+    currency: 'GBP',
+    names: [],               // the list offered in the Name picker
+    who: '',                 // name used last
+    db: null, uid: null, dl: null,
+    catManual: false,        // true once the category is chosen by hand for this entry
+    native: false,           // true when the page runs as a file on its own
+    unsub: null, timer: null
+  };
+
+  var CURS = ['GBP', 'EUR', 'USD', 'CAD', 'AUD', 'CHF', 'INR'];
+  var fmts = {}, toastTimer;
+  function fmtFor(c) {
+    if (!fmts[c]) {
+      try { fmts[c] = new Intl.NumberFormat(undefined, { style: 'currency', currency: c }); }
+      catch (e) { fmts[c] = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' }); }
+    }
+    return fmts[c];
+  }
+  var money = function (minor, cur) { return fmtFor(cur || S.currency).format(minor / 100); };
+  // S.currency is the currency a new entry starts in: the one used last.
+  function setCurrency(c) {
+    S.currency = CURS.indexOf(c) >= 0 ? c : 'GBP';
+    if (!S.editing) $('cur').value = S.currency;
+  }
+  // Settings (usual currency, name list, name used last) are one document, written one at a time.
+  var settingsQ = Promise.resolve();
+  function saveSettings() {
+    ls.set('ledger.currency', S.currency); ls.set('ledger.names', S.names); ls.set('ledger.who', S.who);
+    if (S.mode !== 'cloud') return;
+    settingsQ = settingsQ.then(function () {
+      return S.db.doc('data/users/' + S.uid + '/ledger').set({ currency: S.currency, names: S.names.slice(), who: S.who });
+    }).catch(function () {});
+  }
+  function remember(c, who) {
+    if (c === S.currency && who === S.who) return;
+    S.currency = c; S.who = who;
+    saveSettings();
+  }
+
+  /* ---------- names ---------- */
+  var ADD = '__add';
+  var byName = function (a, b) { return a.localeCompare(b); };
+  function cleanName(raw) {
+    var n = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim().slice(0, 60);
+    return n === ADD ? '' : n;
+  }
+  function cleanNames(a) {
+    return Array.isArray(a) ? a.map(cleanName).filter(Boolean).slice(0, 200) : [];
+  }
+  function addName(raw) {
+    var n = cleanName(raw);
+    if (!n) return '';
+    var same = S.names.filter(function (x) { return x.toLowerCase() === n.toLowerCase(); })[0];
+    if (same) return same;
+    S.names.push(n); S.names.sort(byName);
+    saveSettings();
+    return n;
+  }
+  function syncWho() {
+    var v = $('who').value;
+    $('who-add').hidden = v !== ADD;
+    $('who-remove').hidden = !v || v === ADD || S.names.indexOf(v) < 0;
+  }
+  function renderWho(sel) {
+    var w = $('who'), list = S.names.slice();
+    if (sel && list.indexOf(sel) < 0) list.push(sel);
+    w.replaceChildren();
+    w.appendChild(el('option', { value: '', text: 'No name' }));
+    list.forEach(function (n) { w.appendChild(el('option', { value: n, text: n })); });
+    w.appendChild(el('option', { value: ADD, text: 'Add a name…' }));
+    w.value = sel || '';
+    syncWho();
+  }
+  function noteEl(x) {
+    var n = el('span', { class: 'note', text: x.note || CAT_NAME[x.cat] });
+    var tags = [];
+    if (x.who) tags.push(x.who);
+    if (x.photo) tags.push('photo');
+    if (tags.length) n.appendChild(el('small', { text: ' · ' + tags.join(' · ') }));
+    return n;
+  }
+  // Totals per currency, never added across currencies. The usual currency comes first.
+  function totals(items) {
+    var m = {};
+    items.forEach(function (x) { m[x.cur] = (m[x.cur] || 0) + x.amount; });
+    return Object.keys(m).sort(function (a, b) {
+      return a === S.currency ? -1 : b === S.currency ? 1 : a < b ? -1 : 1;
+    }).map(function (k) { return [k, m[k]]; });
+  }
+  function moneyList(pairs) { return pairs.map(function (p) { return money(p[1], p[0]); }).join(' + '); }
+
+  function parseAmount(str) {
+    var s = String(str).replace(/[^\d.,]/g, '');
+    if (!s) return NaN;
+    if (s.indexOf('.') >= 0 && s.indexOf(',') >= 0) s = s.replace(/,/g, '');
+    else if (s.indexOf(',') >= 0) s = /,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+    var n = Math.round(parseFloat(s) * 100);
+    return n > 0 && n < 1e11 ? n : NaN;
+  }
+
+  function el(tag, attrs) {
+    var e = document.createElement(tag), k;
+    for (k in (attrs || {})) {
+      if (k === 'text') e.textContent = attrs[k];
+      else if (k === 'class') e.className = attrs[k];
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    for (var i = 2; i < arguments.length; i++) if (arguments[i]) e.appendChild(arguments[i]);
+    return e;
+  }
+
+  function norm(id, d) {
+    d = d || {};
+    var amount = Math.round(Number(d.amount));
+    return {
+      id: String(id),
+      amount: isFinite(amount) && amount > 0 ? amount : 0,
+      note: String(d.note == null ? '' : d.note).slice(0, 120),
+      cat: CAT_NAME[d.cat] ? d.cat : (d.cat === 'GR' || d.cat === 'EO') ? 'FD' : 'MS',
+      cur: CURS.indexOf(d.cur) >= 0 ? d.cur : 'GBP',
+      who: cleanName(d.who),
+      photo: !!d.photo,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : S.view + '-01',
+      createdAt: Number(d.createdAt) || 0
+    };
+  }
+
+  function examples() {
+    var t = new Date(), y = new Date(t);
+    y.setDate(t.getDate() - 1);
+    if (y.getMonth() !== t.getMonth()) y = t;
+    var a = iso(t), b = iso(y);
+    return [
+      { id: 'e1', note: 'Site visit, 46 miles', cat: 'MI', amount: 2070, date: a, createdAt: 5 },
+      { id: 'e2', note: 'Client lunch', cat: 'FD', amount: 2840, date: a, createdAt: 4 },
+      { id: 'e3', note: 'Train to Southampton', cat: 'TR', amount: 3460, date: a, createdAt: 3 },
+      { id: 'e4', note: 'Hotel, 1 night', cat: 'AC', amount: 8900, date: b, createdAt: 2 },
+      { id: 'e5', note: 'Phone charger', cat: 'MS', amount: 650, date: b, createdAt: 1 }
+    ];
+  }
+
+  // What the receipt shows: real entries, or marked examples on a ledger never used.
+  function shown() {
+    var items = S.items.slice().sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt;
+    });
+    if (!items.length && S.view === today().slice(0, 7) && !ls.get('ledger.started', false)) {
+      return { items: examples().map(function (x) { x.cur = S.currency; return x; }), example: true };
+    }
+    return { items: items, example: false };
+  }
+
+  /* ---------- storage ---------- */
+  function expCol() { return S.db.doc('data/users/' + S.uid + '/ledger').collection('expenses'); }
+  function newId() {
+    if (S.mode === 'cloud') return expCol().doc().id;
+    return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function retryOnce(fn) {
+    return fn().catch(function (e) {
+      if (!e || e.code !== 'unavailable') throw e;
+      return new Promise(function (r) { setTimeout(r, 400 + Math.random() * 600); }).then(fn);
+    });
+  }
+  function saveLocal() { ls.set('ledger.local', S.all); S.items = S.all.filter(function (x) { return x.date.slice(0, 7) === S.view; }); }
+
+  function put(item) {
+    ls.set('ledger.started', true);
+    if (S.mode === 'cloud') {
+      var body = { amount: item.amount, note: item.note, cat: item.cat, cur: item.cur, who: item.who || '', photo: !!item.photo, date: item.date, month: item.date.slice(0, 7), createdAt: item.createdAt };
+      return retryOnce(function () { return expCol().doc(item.id).set(body); });
+    }
+    S.all = S.all.filter(function (x) { return x.id !== item.id; }).concat([item]);
+    saveLocal(); render();
+    return Promise.resolve();
+  }
+  function remove(id) {
+    if (S.mode === 'cloud') return retryOnce(function () { return expCol().doc(id).delete(); });
+    S.all = S.all.filter(function (x) { return x.id !== id; });
+    saveLocal(); render();
+    return Promise.resolve();
+  }
+  function saveError(e) {
+    if (e && e.code === 'quota_exceeded') return 'Your ledger is full. Remove some old entries, then try again.';
+    if (e && (e.code === 'invalid_argument' || e.code === 'revoked' || e.code === 'not_granted')) return 'You don’t have permission to save entries on this page.';
+    return 'That didn’t save. Check your connection and try again.';
+  }
+
+  function subscribeMonth() {
+    if (S.unsub) { S.unsub(); S.unsub = null; }
+    clearTimeout(S.timer);
+    var cached = ls.get('ledger.cache', null), month = S.view;
+    S.items = cached && cached.uid === S.uid && cached.month === month ? cached.items.map(function (x) { return norm(x.id, x); }) : [];
+    S.loaded = S.items.length > 0;
+    S.net = '';
+    S.timer = setTimeout(function () { S.net = 'slow'; renderStatus(); }, 10000);
+    S.unsub = expCol().where('month', '==', month).limit(1000).onSnapshot(function (snap) {
+      S.items = snap.docs.map(function (d) { return norm(d.id, d.data()); });
+      if (!snap.metadata.fromCache) { clearTimeout(S.timer); S.net = ''; S.loaded = true; }
+      else if (S.items.length) S.loaded = true;
+      if (S.items.length) ls.set('ledger.started', true);
+      ls.set('ledger.cache', { uid: S.uid, month: month, items: S.items });
+      render();
+    }, function () {
+      clearTimeout(S.timer); S.net = 'error'; S.loaded = true; render();
+    });
+  }
+
+  function setView(month) {
+    S.view = month; S.openId = null;
+    if (S.mode === 'cloud') subscribeMonth();
+    else S.items = S.all.filter(function (x) { return x.date.slice(0, 7) === month; });
+    render();
+  }
+
+  /* ---------- rendering ---------- */
+  function renderStatus() {
+    var st = $('status'), text, warn = false;
+    if (S.mode === 'boot') text = 'Opening your ledger…';
+    else if (S.mode === 'local') text = 'Entries are saved on this device only.';
+    else if (S.net === 'slow') { text = 'Your saved expenses can’t be reached yet. Still trying.'; warn = true; }
+    else if (S.net === 'error') { text = 'Your saved expenses couldn’t be loaded. Close this page and open it again.'; warn = true; }
+    else text = 'Saved to your Claude account. Only you see your entries.';
+    st.textContent = text;
+    st.className = 'status' + (warn ? ' warn' : '');
+  }
+
+  function dayLabel(d) {
+    return parseISO(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  function renderReceipt() {
+    var v = shown(), items = v.items, roll = $('roll');
+    var hadFocus = roll.contains(document.activeElement) ? document.activeElement.id : '';
+    var monthName = parseISO(S.view + '-01').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    var tots = totals(items);
+    if (!tots.length) tots = [[S.currency, 0]];
+    var total = tots[0][1];
+    $('month-label').textContent = monthName;
+    $('total').textContent = money(total, tots[0][0]);
+    $('total-more').textContent = tots.length > 1 ? '+ ' + moneyList(tots.slice(1)) : '';
+    $('total-more').hidden = tots.length < 2;
+    $('stamp').hidden = !v.example;
+
+    var sub = items.length + (items.length === 1 ? ' entry' : ' entries');
+    $('sub').textContent = sub;
+
+    roll.replaceChildren();
+    if (!items.length) {
+      var waiting = S.mode === 'boot' || (S.mode === 'cloud' && !S.loaded);
+      roll.appendChild(el('li', { class: 'empty', text: waiting ? 'Opening your ledger…' : 'Nothing logged in ' + monthName + '.' }));
+    }
+    var groups = [], last = null;
+    items.forEach(function (x) {
+      if (!last || last.date !== x.date) { last = { date: x.date, items: [], sum: 0 }; groups.push(last); }
+      last.items.push(x); last.sum += x.amount;
+    });
+    groups.forEach(function (g) {
+      var list = el('ul', { class: 'items' });
+      g.items.forEach(function (x) {
+        var parts = [
+          el('span', { class: 'code', text: x.cat, title: CAT_NAME[x.cat] }),
+          noteEl(x),
+          el('span', { class: 'dots', 'aria-hidden': 'true' }),
+          el('span', { class: 'amt', text: money(x.amount, x.cur) })
+        ];
+        var li = el('li');
+        if (v.example) {
+          li.appendChild(el('div', { class: 'row' }, parts[0], parts[1], parts[2], parts[3]));
+        } else {
+          var open = S.openId === x.id;
+          li.appendChild(el('button', {
+            class: 'row', type: 'button', id: 'row-' + x.id, 'aria-expanded': String(open),
+            onclick: function () { S.openId = open ? null : x.id; renderReceipt(); var b = $('row-' + x.id); if (b) b.focus(); }
+          }, parts[0], parts[1], parts[2], parts[3]));
+          if (open) {
+            li.appendChild(el('div', { class: 'row-actions' },
+              el('button', { class: 'link', type: 'button', id: 'edit-' + x.id, text: 'Edit', onclick: function () { startEdit(x); } }),
+              el('button', { class: 'link del', type: 'button', id: 'del-' + x.id, text: 'Remove', onclick: function () { removeEntry(x); } })
+            ));
+            if (x.photo) li.appendChild(photoView(x));
+          }
+        }
+        list.appendChild(li);
+      });
+      roll.appendChild(el('li', { class: 'day' },
+        el('div', { class: 'day-head' }, el('span', { text: dayLabel(g.date) }), el('span', { text: moneyList(totals(g.items)) })),
+        list));
+    });
+
+    var real = items.length && !v.example;
+    $('export').hidden = !real;
+    $('pdf').hidden = !real || !canSave() || !window.jspdf;
+    $('export').textContent = canSave() ? 'Download month as CSV' : 'Copy month as CSV';
+    $('foot-note').textContent = real ? 'Select an entry to edit or remove it.' : '';
+    if (hadFocus && $(hadFocus)) $(hadFocus).focus();
+  }
+
+  // One bar list: totals per key, split by currency when the month mixes them.
+  function renderBars(list, items, keyOf, labelOf) {
+    var tots = totals(items);
+    list.replaceChildren();
+    tots.forEach(function (t) {
+      var cur = t[0], total = t[1], sums = {};
+      items.forEach(function (x) { if (x.cur === cur) { var k = keyOf(x); sums[k] = (sums[k] || 0) + x.amount; } });
+      var rows = Object.keys(sums).map(function (k) { return [k, sums[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+      if (tots.length > 1) list.appendChild(el('li', { class: 'cur-head', text: cur + ' · ' + money(total, cur) }));
+      var max = rows[0][1];
+      rows.forEach(function (r) {
+        var amt = el('span', { class: 'amt', text: money(r[1], cur) });
+        amt.appendChild(el('small', { text: Math.round(r[1] / total * 100) + '%' }));
+        var fill = el('div', { class: 'fill' });
+        fill.style.width = Math.max(2, r[1] / max * 100) + '%';
+        list.appendChild(el('li', { class: 'bar' }, el('span', { text: labelOf(r[0]) }), amt, el('div', { class: 'track' }, fill)));
+      });
+    });
+  }
+  function renderBreakdown() {
+    var items = shown().items, bars = $('bars');
+    renderBars(bars, items, function (x) { return x.cat; }, function (k) { return CAT_NAME[k]; });
+    if (!items.length) bars.appendChild(el('li', {}, el('p', { text: 'Category totals appear here once the month has entries.' })));
+    var named = items.some(function (x) { return x.who; });
+    $('who-title').hidden = !named; $('who-bars').hidden = !named;
+    if (named) renderBars($('who-bars'), items, function (x) { return 'n:' + x.who; }, function (k) { return k.slice(2) || 'No name'; });
+    else $('who-bars').replaceChildren();
+  }
+
+  function render() { renderStatus(); renderReceipt(); renderBreakdown(); }
+
+  /* ---------- toast ---------- */
+  function toast(msg, label, fn) {
+    clearTimeout(toastTimer);
+    $('toast-msg').textContent = msg;
+    var act = $('toast-act');
+    act.hidden = !label;
+    act.textContent = label || '';
+    act.onclick = fn ? function () { $('toast').hidden = true; fn(); } : null;
+    $('toast').hidden = false;
+    toastTimer = setTimeout(function () { $('toast').hidden = true; }, label ? 8000 : 4500);
+  }
+
+  /* ---------- receipt photos ---------- */
+  // A photo is shrunk to a small JPEG and kept apart from its entry, under the entry's id:
+  // in the account's private data when saved to Claude, otherwise in this browser.
+  var P = {};                              // photos already loaded this visit
+  var F = { photo: 'none', rec: null };    // the form's photo: none | keep | new
+  var MAX_PHOTO = 230000, idbP = null;
+  function idbDo(mode, fn) {
+    if (!idbP) idbP = new Promise(function (res, rej) {
+      var rq = indexedDB.open('ledger-photos', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('p'); };
+      rq.onsuccess = function () { res(rq.result); };
+      rq.onerror = function () { rej(rq.error); };
+    });
+    return idbP.then(function (d) {
+      return new Promise(function (res, rej) {
+        var tx = d.transaction('p', mode), rq = fn(tx.objectStore('p'));
+        tx.oncomplete = function () { res(rq.result); };
+        tx.onerror = tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+  function photoRef(id) { return S.db.doc('data/users/' + S.uid + '/ledger').collection('photos').doc(id); }
+  function photoPut(id, rec) {
+    var body = { data: rec.data, w: rec.w, h: rec.h };
+    var p = S.mode === 'cloud'
+      ? retryOnce(function () { return photoRef(id).set(body); })
+      : idbDo('readwrite', function (st) { return st.put(body, id); });
+    return p.then(function () { P[id] = body; });
+  }
+  function photoGet(id) {
+    if (P[id]) return Promise.resolve(P[id]);
+    var p = S.mode === 'cloud'
+      ? photoRef(id).get().then(function (snap) { return snap.exists ? snap.data() : null; })
+      : idbDo('readonly', function (st) { return st.get(id); });
+    return p.then(function (r) {
+      if (!r || typeof r.data !== 'string' || !/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(r.data)) return null;
+      P[id] = { data: r.data, w: Number(r.w) > 0 ? Number(r.w) : 3, h: Number(r.h) > 0 ? Number(r.h) : 4 };
+      return P[id];
+    });
+  }
+  function photoDel(id) {
+    delete P[id];
+    var p;
+    try { p = S.mode === 'cloud' ? photoRef(id).delete() : idbDo('readwrite', function (st) { return st.delete(id); }); }
+    catch (e) { p = Promise.resolve(); }
+    return p.catch(function () {});
+  }
+  function shrink(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        try {
+          var edge = 1400, q = 0.7, out = '', w = 1, h = 1, c = document.createElement('canvas');
+          for (var i = 0; i < 9; i++) {
+            var k = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight));
+            w = Math.max(1, Math.round(img.naturalWidth * k)); h = Math.max(1, Math.round(img.naturalHeight * k));
+            c.width = w; c.height = h;
+            var g = c.getContext('2d');
+            g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+            out = c.toDataURL('image/jpeg', q);
+            if (out.length <= MAX_PHOTO) break;
+            if (q > 0.45) q -= 0.1; else edge = Math.round(edge * 0.8);
+          }
+          URL.revokeObjectURL(url);
+          if (out.length > MAX_PHOTO || out.indexOf('data:image/jpeg') !== 0) rej(new Error('photo')); else res({ data: out, w: w, h: h });
+        } catch (e) { URL.revokeObjectURL(url); rej(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('photo')); };
+      img.src = url;
+    });
+  }
+  function showShot(rec) {
+    var im = $('shot-preview');
+    if (rec) { im.src = rec.data; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
+    $('shot-remove').hidden = F.photo === 'none';
+    $('shot-label').textContent = F.photo === 'none' ? 'Add receipt photo' : 'Replace photo';
+  }
+  function setShot(state, rec) { F.photo = state; F.rec = rec || null; showShot(rec); }
+  function photoView(x) {
+    var box = el('div', { class: 'photo-view' });
+    var show = function (r) {
+      box.replaceChildren(r
+        ? el('img', { class: 'shot', src: r.data, alt: 'Receipt for ' + (x.note || CAT_NAME[x.cat]) })
+        : el('span', { text: 'The receipt photo couldn’t be loaded.' }));
+    };
+    if (P[x.id]) show(P[x.id]);
+    else { box.textContent = 'Loading receipt photo…'; photoGet(x.id).then(show, function () { show(null); }); }
+    return box;
+  }
+
+  /* ---------- category from the description ---------- */
+  var RULES = [
+    ['MI', /\b(mileage|miles?|drove|driving|fuel|petrol|diesel|unleaded)\b/],
+    ['FD', /\b(lunch|dinner|breakfast|brunch|supper|meals?|food|drinks?|coffees?|tea|restaurant|cafe|pub|bar|sandwich(es)?|snacks?|pizza|takeaway|beers?|wine|catering|subsistence|groceries|costa|starbucks|pret|greggs|mcdonalds?|nandos?)\b/],
+    ['TR', /\b(trains?|rail|railcard|bus|coach|taxis?|cab|uber|tube|underground|metro|tram|flights?|plane|airline|airport|ferry|parking|car park|tolls?|car hire|hire car|rental|tickets?|fares?|congestion|ulez|eurostar|easyjet|ryanair)\b/],
+    ['AC', /\b(hotels?|accommodation|airbnb|b&b|bed and breakfast|hostel|lodge|inn|guesthouse|guest house|travelodge|hilton|marriott|stay)\b/]
+  ];
+  // The category whose keyword comes first in the text; mileage always wins; Misc when nothing matches.
+  function guessCat(text) {
+    var t = String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/['’]/g, '');
+    if (!t.trim()) return '';
+    var best = '', at = Infinity;
+    RULES.forEach(function (r) {
+      var m = r[1].exec(t);
+      if (m && (r[0] === 'MI' ? at !== -1 : m.index < at)) { best = r[0]; at = r[0] === 'MI' ? -1 : m.index; }
+    });
+    return best || 'MS';
+  }
+  function autoCat() {
+    if (S.catManual) return;
+    var g = guessCat($('note').value), r = g && $('cat-' + g);
+    if (r) r.checked = true;
+    $('cat-hint').hidden = !r;
+  }
+
+  /* ---------- form ---------- */
+  function selectedCat() {
+    var r = document.querySelector('input[name="cat"]:checked');
+    return r ? r.value : 'MS';
+  }
+  function setEditing(x) {
+    S.editing = x;
+    $('form-title').textContent = x ? 'Edit this expense' : 'Log an expense';
+    $('submit').textContent = x ? 'Save changes' : 'Log expense';
+    $('cancel').hidden = !x;
+  }
+  function startEdit(x) {
+    setEditing(x);
+    S.catManual = true; $('cat-hint').hidden = true;
+    if (x.photo) {
+      setShot('keep');
+      photoGet(x.id).then(function (r) { if (r && S.editing && S.editing.id === x.id && F.photo === 'keep') showShot(r); }).catch(function () {});
+    } else setShot('none');
+    $('amount').value = (x.amount / 100).toFixed(2);
+    $('note').value = x.note;
+    $('date').value = x.date;
+    $('cur').value = x.cur;
+    renderWho(x.who);
+    var r = $('cat-' + x.cat); if (r) r.checked = true;
+    $('amount-err').hidden = true;
+    $('form').scrollIntoView({ block: 'start', behavior: 'auto' });
+    $('amount').focus(); $('amount').select();
+  }
+  function clearForm() {
+    setEditing(null);
+    S.catManual = false; $('cat-hint').hidden = true;
+    setShot('none');
+    $('cur').value = S.currency;
+    $('who-new').value = '';
+    renderWho(S.who);
+    $('amount').value = ''; $('note').value = '';
+    $('amount-err').hidden = true;
+  }
+  function removeEntry(x) {
+    var undone = false;
+    S.openId = null;
+    if (S.editing && S.editing.id === x.id) clearForm();
+    remove(x.id).then(function () {
+      toast('Removed ' + (x.note || CAT_NAME[x.cat]) + ', ' + money(x.amount, x.cur) + '.', 'Undo', function () {
+        undone = true;
+        put(x).catch(function (e) { toast(saveError(e)); });
+      });
+      // The photo goes once the chance to undo has passed.
+      if (x.photo) setTimeout(function () { if (!undone) photoDel(x.id); }, 9000);
+    }).catch(function (e) { toast(saveError(e)); });
+  }
+
+  function onSubmit(ev) {
+    ev.preventDefault();
+    var amount = parseAmount($('amount').value), err = $('amount-err');
+    if (!amount) {
+      err.textContent = 'Enter an amount above zero, such as 12.50.';
+      err.hidden = false; $('amount').focus(); return;
+    }
+    err.hidden = true;
+    var date = /^\d{4}-\d{2}-\d{2}$/.test($('date').value) ? $('date').value : today();
+    var cur = CURS.indexOf($('cur').value) >= 0 ? $('cur').value : S.currency;
+    var whoSel = $('who').value, who = whoSel === ADD ? addName($('who-new').value) : cleanName(whoSel);
+    var was = S.editing, item;
+    try {
+      item = {
+        id: was ? was.id : newId(),
+        amount: amount,
+        note: $('note').value.trim().slice(0, 120),
+        cat: selectedCat(),
+        cur: cur,
+        who: who,
+        photo: F.photo !== 'none',
+        date: date,
+        createdAt: was ? was.createdAt : Date.now()
+      };
+    } catch (e) { toast(saveError(e)); return; }
+    var btn = $('submit');
+    btn.disabled = true;
+    var pending = F.photo === 'new' ? F.rec : null, dropOld = !!(was && was.photo && F.photo === 'none');
+    (pending ? photoPut(item.id, pending) : Promise.resolve()).then(function () { return put(item); }).then(function () {
+      if (dropOld) photoDel(item.id);
+      remember(cur, who);
+      clearForm();
+      $('date').value = date;
+      if (date.slice(0, 7) !== S.view) setView(date.slice(0, 7));
+      toast((was ? 'Updated: ' : 'Logged: ') + money(amount, cur) + ' on ' + dayLabel(date) + '.');
+      $('amount').focus();
+    }).catch(function (e) { toast(saveError(e)); }).then(function () { btn.disabled = false; });
+  }
+
+  /* ---------- export ---------- */
+  function csv() {
+    var q = function (s) { return '"' + String(s).replace(/"/g, '""') + '"'; };
+    var lines = ['date,name,description,category,amount,currency'];
+    shown().items.slice().reverse().forEach(function (x) {
+      lines.push([x.date, q(x.who), q(x.note), q(CAT_NAME[x.cat]), (x.amount / 100).toFixed(2), x.cur].join(','));
+    });
+    return lines.join('\r\n') + '\r\n';
+  }
+  function copyCsv(text) {
+    try {
+      navigator.clipboard.writeText(text).then(
+        function () { toast('Copied. Paste it into a spreadsheet.'); },
+        function () { toast('Copying was blocked by the browser.'); });
+    } catch (e) { toast('Copying was blocked by the browser.'); }
+  }
+  // Saving a file: through Claude when the page is open there, or a normal
+  // browser download when this page runs as a file on its own.
+  function canSave() { return !!S.dl || S.native; }
+  function saveFile(name, data, mime) {
+    if (S.dl) return S.dl.save({ filename: name, data: data });
+    return new Promise(function (resolve) {
+      var blob = new Blob([data], { type: mime });
+      var download = function () {
+        var url = URL.createObjectURL(blob), a = el('a', { href: url, download: name });
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        resolve();
+      };
+      // On a phone, hand the file to the share sheet (Mail, Files, and so on).
+      try {
+        var file = new File([blob], name, { type: mime });
+        var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: name }).then(
+            function () { resolve({ quiet: true }); },
+            function (e) { if (e && e.name === 'AbortError') resolve({ quiet: true }); else download(); });
+          return;
+        }
+      } catch (e) { /* fall through to a normal download */ }
+      download();
+    });
+  }
+  // The month in view as an A4 PDF: header band, entries table, a total per currency.
+  function buildPdf(JsPDF, items, monthName, logo, photos) {
+    var doc = new JsPDF({ unit: 'mm', format: 'a4' });
+    // The built-in PDF fonts cover Western European characters only.
+    var safe = function (t) {
+      return String(t == null ? '' : t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+        .replace(/[–—]/g, '-').replace(/…/g, '...').replace(/[^\x20-\xff]/g, '?');
+    };
+    var num = function (minor) { return (minor / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var L = 14, R = 196, X = { date: L + 2, who: 38, note: 74, cat: 138, amt: R - 2 }, y;
+
+    doc.setFillColor(10, 42, 92); doc.rect(0, 0, 210, 26, 'F');
+    doc.setFillColor(226, 169, 37); doc.rect(0, 26, 210, 1.2, 'F');
+    var tx = L;
+    try { if (logo && logo.complete && logo.naturalWidth) { doc.addImage(logo, 'PNG', L, 7, 53.5, 12); tx = 74; } } catch (e) { tx = L; }
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('EXPENSE LEDGER', tx, 15);
+
+    doc.setTextColor(20, 34, 74); doc.setFontSize(16);
+    doc.text(safe(monthName), L, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 102, 133);
+    var p = today().split('-');
+    doc.text(items.length + (items.length === 1 ? ' entry' : ' entries') + ', exported ' + p[2] + '/' + p[1] + '/' + p[0], L, 46);
+    y = 52;
+
+    function head() {
+      doc.setFillColor(10, 42, 92); doc.rect(L, y, R - L, 7, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+      doc.text('DATE', X.date, y + 4.8); doc.text('NAME', X.who, y + 4.8); doc.text('DESCRIPTION', X.note, y + 4.8);
+      doc.text('CATEGORY', X.cat, y + 4.8); doc.text('AMOUNT', X.amt, y + 4.8, { align: 'right' });
+      y += 7;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(20, 34, 74);
+    }
+    function room(h) { if (y + h > 283) { doc.addPage(); y = 16; head(); } }
+
+    head();
+    items.forEach(function (x) {
+      var d = x.date.split('-');
+      var who = doc.splitTextToSize(safe(x.who), 34), note = doc.splitTextToSize(safe(x.note || CAT_NAME[x.cat]), 62);
+      var h = Math.max(who.length, note.length, 1) * 4.2 + 3.4;
+      room(h);
+      doc.text(d[2] + '/' + d[1] + '/' + d[0], X.date, y + 4.8);
+      doc.text(who, X.who, y + 4.8); doc.text(note, X.note, y + 4.8);
+      doc.text(safe(CAT_NAME[x.cat]), X.cat, y + 4.8);
+      doc.text(num(x.amount) + ' ' + x.cur, X.amt, y + 4.8, { align: 'right' });
+      y += h;
+      doc.setDrawColor(211, 217, 231); doc.setLineWidth(0.2); doc.line(L, y, R, y);
+    });
+
+    y += 3;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    totals(items).forEach(function (t) {
+      if (y + 7 > 283) { doc.addPage(); y = 16; }
+      doc.text('Total ' + t[0], X.cat, y + 4.8);
+      doc.text(num(t[1]) + ' ' + t[0], X.amt, y + 4.8, { align: 'right' });
+      y += 6.5;
+    });
+    // One page per receipt photo, after the table.
+    items.forEach(function (x) {
+      var r = photos && photos[x.id];
+      if (!r) return;
+      doc.addPage();
+      var d = x.date.split('-');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 34, 74);
+      doc.text(doc.splitTextToSize(safe('Receipt: ' + d[2] + '/' + d[1] + '/' + d[0] + (x.who ? ', ' + x.who : '') + ', ' +
+        (x.note || CAT_NAME[x.cat]) + ', ' + num(x.amount) + ' ' + x.cur), R - L), L, 18);
+      var iw = R - L, ih = iw * r.h / r.w;
+      if (ih > 250) { ih = 250; iw = ih * r.w / r.h; }
+      try { doc.addImage(r.data, 'JPEG', L, 30, iw, ih); }
+      catch (e) { doc.setFont('helvetica', 'normal'); doc.text('This photo could not be added.', L, 34); }
+    });
+    return doc.output('arraybuffer');
+  }
+  function onPdf() {
+    if (!canSave() || !window.jspdf) return;
+    var name = 'expenses-' + S.view + '.pdf', items = shown().items.slice().reverse();
+    var withPhoto = items.filter(function (x) { return x.photo; });
+    Promise.all(withPhoto.map(function (x) { return photoGet(x.id).catch(function () { return null; }); })).then(function (recs) {
+      var photos = {}, buf;
+      withPhoto.forEach(function (x, i) { if (recs[i]) photos[x.id] = recs[i]; });
+      try {
+        var monthName = parseISO(S.view + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        buf = buildPdf(window.jspdf.jsPDF, items, monthName, document.querySelector('.logo'), photos);
+      } catch (e) { toast('The PDF couldn’t be built. Use the CSV export instead.'); return; }
+      return saveFile(name, buf, 'application/pdf').then(
+        function (r) { if (!r || !r.quiet) toast('Saved ' + name + '.'); },
+        function (e) { if (!e || e.code !== 'declined') toast('The download didn’t go through. Try again in a moment.'); });
+    });
+  }
+  function onExport() {
+    var text = csv(), name = 'expenses-' + S.view + '.csv';
+    if (!canSave()) { copyCsv(text); return; }
+    saveFile(name, text, 'text/csv;charset=utf-8').then(
+      function (r) { if (!r || !r.quiet) toast('Saved ' + name + '.'); },
+      function (e) { if (!e || e.code !== 'declined') toast('The download didn’t go through. Try again in a moment.'); });
+  }
+
+  /* ---------- start ---------- */
+  function startLocal() {
+    S.mode = 'local';
+    S.all = (ls.get('ledger.local', []) || []).map(function (x) { return norm(x.id, x); });
+    var c = ls.get('ledger.currency', null); if (c) setCurrency(c);
+    S.loaded = true;
+    setView(S.view);
+  }
+
+  function boot() {
+    CATS.forEach(function (c, i) {
+      var input = el('input', { type: 'radio', name: 'cat', id: 'cat-' + c[0], value: c[0] });
+      if (i === 0) input.checked = true;
+      $('chips').appendChild(el('label', { class: 'chip' }, input, el('span', {}, el('b', { text: c[0] }), document.createTextNode(c[1]))));
+    });
+    CURS.forEach(function (c) {
+      var part = fmtFor(c).formatToParts(0).filter(function (p) { return p.type === 'currency'; })[0];
+      var sym = part ? part.value : '';
+      $('cur').appendChild(el('option', { value: c, text: sym && sym !== c ? c + ' ' + sym : c }));
+    });
+    setCurrency(ls.get('ledger.currency', 'GBP'));
+    $('date').value = today();
+    $('form').addEventListener('submit', onSubmit);
+    $('cancel').addEventListener('click', clearForm);
+    $('prev-month').addEventListener('click', function () { setView(shiftMonth(S.view, -1)); });
+    $('next-month').addEventListener('click', function () { setView(shiftMonth(S.view, 1)); });
+    $('export').addEventListener('click', onExport);
+    $('pdf').addEventListener('click', onPdf);
+    $('note').addEventListener('input', autoCat);
+    $('shot').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      this.value = '';
+      if (!f) return;
+      shrink(f).then(function (rec) { setShot('new', rec); }, function () { toast('That photo couldn’t be read. Try taking it again.'); });
+    });
+    $('shot-remove').addEventListener('click', function () { setShot('none'); });
+    $('chips').addEventListener('change', function () { S.catManual = true; $('cat-hint').hidden = true; });
+    S.names = cleanNames(ls.get('ledger.names', [])).sort(byName);
+    S.who = cleanName(ls.get('ledger.who', ''));
+    renderWho(S.who);
+    $('who').addEventListener('change', function () {
+      syncWho();
+      if ($('who').value === ADD) { $('who-new').focus(); return; }
+      // The chosen name sticks straight away, on this visit and the next.
+      if (!S.editing) { S.who = cleanName($('who').value); saveSettings(); }
+    });
+    var saveNew = function () {
+      var n = addName($('who-new').value);
+      if (!n) { $('who-new').focus(); return; }
+      $('who-new').value = '';
+      renderWho(n);
+      if (!S.editing) { S.who = n; saveSettings(); }
+    };
+    $('who-save').addEventListener('click', saveNew);
+    $('who-new').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); saveNew(); } });
+    $('who-remove').addEventListener('click', function () {
+      var v = $('who').value;
+      S.names = S.names.filter(function (x) { return x !== v; });
+      if (S.who === v) S.who = '';
+      saveSettings();
+      renderWho('');
+      $('who').focus();
+    });
+    render();
+
+    var c = window.claude;
+    if (!c || typeof c.use !== 'function') { S.native = true; startLocal(); return; }
+    var use = function (n) { return Promise.resolve().then(function () { return c.use(n); }).catch(function () { return null; }); };
+    Promise.all([use('db'), use('user'), use('downloads')]).then(function (r) {
+      S.dl = r[2];
+      var idp = r[1] ? Promise.resolve(r[1].id()).catch(function () { return null; }) : Promise.resolve(null);
+      return idp.then(function (uid) {
+        if (!r[0] || !uid) { startLocal(); return; }
+        S.db = r[0]; S.uid = uid; S.mode = 'cloud';
+        settingsQ = S.db.doc('data/users/' + uid + '/ledger').get().then(function (snap) {
+          var d = snap.exists && snap.data();
+          if (!d) return;
+          if (typeof d.currency === 'string') setCurrency(d.currency);
+          cleanNames(d.names).forEach(function (n) { if (S.names.indexOf(n) < 0) S.names.push(n); });
+          S.names.sort(byName);
+          if (typeof d.who === 'string') S.who = cleanName(d.who);
+          ls.set('ledger.currency', S.currency); ls.set('ledger.names', S.names); ls.set('ledger.who', S.who);
+          var now = $('who').value;
+          renderWho(now && now !== ADD ? now : S.who);
+          render();
+        }).catch(function () {});
+        subscribeMonth();
+        render();
+      });
+    }).catch(function () { startLocal(); });
+  }
+
+  boot();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</body>
+</html>
